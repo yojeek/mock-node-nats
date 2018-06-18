@@ -41,14 +41,19 @@ class NATS extends EventEmitter {
 
   /**
    * Subscribe to a given subject.
-   * TODO: implement `options` argument.
    *
    * @param {String} subject
+   * @param {Object} [opts]
    * @param {Function} callback
    *
    * @returns {String} sid
    */
-  subscribe(subject, callback) {
+  subscribe(subject, opts, callback) {
+    if (typeof opts === 'function') {
+      callback = opts;
+      opts = undefined;
+    }
+
     const sid = uuid();
 
     const sub = {
