@@ -7,17 +7,25 @@ const {
 } = require('events');
 
 /**
- * NB: The subs are stored in 2 maps shared by all instances of the NATS class.
+ * Servers are isolated subscribers.
  */
-const subsBySid = new Map();
-const subsBySubject = new Map();
+const servers = {};
+
+function getServer(url = '__default') {
+  let server = servers[url] ? servers[url] : servers[url] = {
+    subsBySid : new Map(),
+    subsBySubject : new Map()
+  };
+
+  return server;
+}
 
 class NATS extends EventEmitter {
   /**
    * The mocked transport's subs for testing purposes.
    */
   static get subs() {
-    return subsBySid;
+    return this.subsBySid;
   }
 
   /**
@@ -25,11 +33,16 @@ class NATS extends EventEmitter {
    *
    * @returns {NATS} client
    */
-  static connect() {
-    const nats =  new NATS();
+  static connect(params) {
+    const nats =  new NATS(params);
     process.nextTick(() => nats.emit('connect'));
 
     return nats;
+  }
+
+  constructor({url}) {
+    super();
+    Object.assign(this, getServer(url))
   }
 
   /**
@@ -73,12 +86,12 @@ class NATS extends EventEmitter {
    * @param {String} sid
    */
   unsubscribe(sid) {
-    const sub = subsBySid.get(sid);
+    const sub = this.subsBySid.get(sid);
 
     if (sub == null) return;
 
-    subsBySid.delete(sid);
-    subsBySubject.get(sub.subject).delete(sid);
+    this.subsBySid.delete(sid);
+    this.subsBySubject.get(sub.subject).delete(sid);
   }
 
   /**
@@ -90,7 +103,7 @@ class NATS extends EventEmitter {
    * @param {String} replyTo
    */
   publish(subject, message, replyTo) {
-    const subs = subsBySubject.get(subject) || new Map();
+    const subs = this.subsBySubject.get(subject) || new Map();
 
     for (const sub of subs.values()) {
       sub.callback(message, replyTo, subject);
@@ -125,12 +138,12 @@ class NATS extends EventEmitter {
   }
 
   _addSub(sub) {
-    subsBySid.set(sub.sid, sub);
+    this.subsBySid.set(sub.sid, sub);
 
-    // NOTE: `subsBySubject` is a map (by subject) of maps (by sid)
-    const subjectSubs = subsBySubject.get(sub.subject) || new Map();
+    // NOTE: `this.subsBySubject` is a map (by subject) of maps (by sid)
+    const subjectSubs = this.subsBySubject.get(sub.subject) || new Map();
     subjectSubs.set(sub.sid, sub);
-    subsBySubject.set(sub.subject, subjectSubs);
+    this.subsBySubject.set(sub.subject, subjectSubs);
   }
 }
 
