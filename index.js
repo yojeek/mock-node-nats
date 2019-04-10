@@ -6,6 +6,13 @@ const {
   EventEmitter
 } = require('events');
 
+class NatsError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = this.constructor.name;
+  }
+}
+
 /**
  * Servers are isolated subscribers.
  */
@@ -42,7 +49,7 @@ class NATS extends EventEmitter {
 
   constructor({url}) {
     super();
-    Object.assign(this, getServer(url))
+    Object.assign(this, getServer(url));
   }
 
   /**
@@ -130,9 +137,16 @@ class NATS extends EventEmitter {
       callback
     };
 
+    if (!subject) {
+      callback && setTimeout(() => { callback(new NatsError('No Subject')); }, 10);
+      return sid;
+    }
+
     this._addSub(sub);
 
     this.publish(subject, message, sid);
+
+    callback && setTimeout(() => { callback(sid); }, 10);
 
     return sid;
   }
