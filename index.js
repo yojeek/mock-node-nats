@@ -137,6 +137,10 @@ class NATS extends EventEmitter {
     return sid;
   }
 
+  requestOne(...args) {
+    return this.request.apply(this, args);
+  }
+
   _addSub(sub) {
     this.subsBySid.set(sub.sid, sub);
 
