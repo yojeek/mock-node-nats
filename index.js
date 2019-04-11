@@ -151,8 +151,8 @@ class NATS extends EventEmitter {
     return sid;
   }
 
-  requestOne(...args) {
-    return this.request.apply(this, args);
+  requestOne(subject, message, options, timeout, callback) {
+    return this.request(subject, message, options, callback);
   }
 
   _addSub(sub) {
